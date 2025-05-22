@@ -1,0 +1,20 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap');
+
+.input {
+  @apply w-full px-4 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white;
+}
+.btn-primary {
+  @apply w-full bg-white hover:bg-blue-700 text-black font-bold py-2 px-4 rounded;
+}
+
+.font-poppins {
+  font-family: 'Poppins', sans-serif;
+}
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
