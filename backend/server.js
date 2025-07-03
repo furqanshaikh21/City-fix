@@ -9,6 +9,7 @@ import complaintRoutes from './routes/complaintRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 
+
 dotenv.config();
 connectDB();
 
@@ -16,37 +17,46 @@ const app = express();
 
 app.use(cors({
   origin: 'http://localhost:5173',
-  methods: ['GET', 'POST'],
-  credentials: true, // Optional — only if using cookies or secure sessions
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  credentials: true,
 }));
+
 app.use(express.json());
 
-app.use('/api/auth', authRoutes);
+// Static folder for media
 app.use('/uploads', express.static('uploads'));
+
+// Routes
+app.use('/api/auth', authRoutes);
 app.use('/api/complaints', complaintRoutes);
+app.use('/api/admin', adminRoutes);
 
-app.use('/api/admin', adminRoutes); // ✅ Must be mounted
 
-
+// Create HTTP + WebSocket server
 const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
     origin: 'http://localhost:5173',
-    methods: ['GET', 'POST'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     credentials: true,
   },
 });
 
+// Attach socket to app if you need it in controllers
+app.set('io', io);
+
+// Socket events
 io.on('connection', (socket) => {
-  console.log('a user connected');
+  console.log('🔥 A user connected');
 
   socket.on('disconnect', () => {
-    console.log('user disconnected');
+    console.log('⚡ User disconnected');
   });
 });
 
+// Start server
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => console.log(`🔥 Server running on port bro ${PORT}`));
+server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
 
-export { io }; // Optional if you want to use io elsewhere
+export { io };

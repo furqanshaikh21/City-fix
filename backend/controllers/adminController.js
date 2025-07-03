@@ -8,11 +8,19 @@ export const loginAdmin = async (req, res) => {
   const admin = await Admin.findOne({ username });
 
   if (admin && (await admin.matchPassword(password))) {
-    res.json({ token: generateToken(admin._id), username: admin.username });
+    res.json({
+      token: generateToken(admin._id),
+      admin: {
+        _id: admin._id,
+        username: admin.username,
+        role: "admin" // Include role explicitly
+      },
+    });
   } else {
     res.status(401).json({ message: 'Invalid credentials' });
   }
 };
+
 
 // console.log('Username:', username);
 // console.log('Found admin:', admin);
@@ -32,7 +40,14 @@ export const updateComplaintStatus = async (req, res) => {
   const complaint = await Complaint.findById(req.params.id);
   if (!complaint) return res.status(404).json({ message: 'Complaint not found' });
 
-  complaint.status = status;
+  if (status === 'Resolved') {
+    complaint.status = 'In Progress'; // App logic: Wait for user to confirm
+    complaint.verificationStatus = 'Pending';
+    complaint.isResolved = true; // ✅ Mark resolved to show in user's verification
+  } else {
+    complaint.status = status;
+  }
+
   await complaint.save();
-  res.json({ message: 'Status updated', complaint });
+  res.json({ message: 'Status updated ✅', complaint });
 };

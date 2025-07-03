@@ -1,71 +1,81 @@
-import { useEffect, useRef, useState } from 'react'; 
+// src/pages/ComplaintForm.jsx
+import { useEffect, useRef, useState } from 'react';
 import axios from '../utils/axios';
 
 const categories = [
-  'Road',
-  'Water',
-  'Electricity',
-  'Sanitation',
-  'Public Transport',
-  'Safety',
-  'Other',
+  'Road', 'Water', 'Electricity', 'Sanitation',
+  'Public Transport', 'Safety', 'Other',
 ];
 
 const ComplaintForm = () => {
-  const [form, setForm] = useState({
-    title: '',
-    description: '',
-    category: '',
-  });
+  const [form, setForm] = useState({ title: '', description: '', category: '' });
   const [location, setLocation] = useState(null);
-  const [file, setFile] = useState(null);
-  const [filePreview, setFilePreview] = useState(null);
+  const [mediaFiles, setMediaFiles] = useState([]);
+  const [mediaPreviews, setMediaPreviews] = useState([]);
   const [errors, setErrors] = useState({});
-
+  const [message, setMessage] = useState('');
   const autocompleteRef = useRef();
 
-  // ✅ Updated Google Maps Autocomplete logic only
-useEffect(() => {
-  const initAutocomplete = () => {
-    if (!window.google || !window.google.maps || !window.google.maps.places) {
-      console.error("Google Maps JavaScript API or Places library is not available.");
+  useEffect(() => {
+    const initAutocomplete = () => {
+      if (!window.google || !window.google.maps || !window.google.maps.places) return;
+      const autocomplete = new window.google.maps.places.Autocomplete(autocompleteRef.current, {
+        types: ['geocode'],
+      });
+      autocomplete.addListener('place_changed', () => {
+        const place = autocomplete.getPlace();
+        if (place.geometry) {
+          setLocation({
+            type: 'Point',
+            coordinates: [
+              place.geometry.location.lng(),
+              place.geometry.location.lat(),
+            ],
+            address: place.formatted_address,
+          });
+        }
+      });
+    };
+
+    const script = document.createElement('script');
+    script.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyB8Z-9vlITIqlvT_PBb-xLGcOGse8lLimE&libraries=places';
+    script.async = true;
+    script.onload = initAutocomplete;
+    document.body.appendChild(script);
+    return () => document.body.removeChild(script);
+  }, []);
+
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleFilesChange = (e) => {
+    const files = Array.from(e.target.files);
+    const newErrors = {};
+
+    if (files.length < 1) {
+      newErrors.media = 'At least 1 image is required.';
+    } else if (files.length > 3) {
+      newErrors.media = 'You can upload a maximum of 3 images.';
+    }
+
+    const oversized = files.find(f => f.size > 3 * 1024 * 1024);
+    if (oversized) {
+      newErrors.media = 'Each image must be less than 3MB.';
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      setMediaFiles([]);
+      setMediaPreviews([]);
       return;
     }
 
-    const autocomplete = new window.google.maps.places.Autocomplete(autocompleteRef.current, {
-      types: ['geocode'],
-    });
-
-    autocomplete.addListener('place_changed', () => {
-      const place = autocomplete.getPlace();
-      if (place.geometry) {
-        setLocation({
-          type: 'Point',
-          coordinates: [
-            place.geometry.location.lng(),
-            place.geometry.location.lat(),
-          ],
-          address: place.formatted_address,
-        });
-      }
-    });
+    setErrors(prev => ({ ...prev, media: null }));
+    setMediaFiles(files);
+    const previews = files.map(file => URL.createObjectURL(file));
+    setMediaPreviews(previews);
   };
-
-  const script = document.createElement('script');
-  script.src =
-    'https://maps.googleapis.com/maps/api/js?key=AIzaSyB8Z-9vlITIqlvT_PBb-xLGcOGse8lLimE&libraries=places';
-  script.async = true;
-  script.onload = initAutocomplete;
-  script.onerror = () => {
-    console.error('Failed to load Google Maps script');
-  };
-
-  document.body.appendChild(script);
-
-  return () => {
-    document.body.removeChild(script);
-  };
-}, []);
 
   const validate = () => {
     const newErrors = {};
@@ -73,126 +83,128 @@ useEffect(() => {
     if (!form.description.trim()) newErrors.description = 'Description is required';
     if (!form.category.trim()) newErrors.category = 'Category is required';
     if (!location) newErrors.location = 'Location is required';
+    if (mediaFiles.length < 1) newErrors.media = 'At least 1 image is required';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setMessage('');
+    if (!validate()) return;
 
-  const handleFileChange = (e) => {
-    const selectedFile = e.target.files[0];
-    setFile(selectedFile);
-    if (selectedFile) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFilePreview(reader.result);
-      };
-      reader.readAsDataURL(selectedFile);
-    } else {
-      setFilePreview(null);
-    }
-  };
-
- const handleSubmit = async (e) => {
-  e.preventDefault();
-  if (!validate()) return;
-
-  const data = new FormData();
-  Object.keys(form).forEach((key) => data.append(key, form[key]));
-
-  data.append('location', JSON.stringify({
-    type: location.type,
-    coordinates: location.coordinates,
-  }));
-  data.append('address', location.address);
-
-    if (file) data.append('media', file);
+    const data = new FormData();
+    Object.entries(form).forEach(([key, value]) => data.append(key, value));
+    data.append('location', JSON.stringify(location));
+    data.append('address', location.address);
+    mediaFiles.forEach(file => data.append('media', file));
 
     try {
       await axios.post('/complaints', data);
-      alert('Complaint submitted!');
+      setMessage('✅ Complaint submitted successfully!');
       setForm({ title: '', description: '', category: '' });
       setLocation(null);
+      setMediaFiles([]);
+      setMediaPreviews([]);
       autocompleteRef.current.value = '';
-      setFile(null);
-      setFilePreview(null);
       setErrors({});
     } catch (err) {
       console.error(err);
-      alert('Error submitting complaint');
+      setMessage('❌ Failed to submit complaint.');
     }
   };
 
   return (
-    <div className="max-w-xl mx-auto p-6 bg-white shadow-xl dark:bg-zinc-800 rounded-xl">
-      <h2 className="text-2xl font-semibold mb-6">Submit a Complaint</h2>
-      <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Title */}
+    <div className="px-6 py-10 max-w-3xl mx-auto bg-white text-gray-800 rounded-xl shadow-md">
+      <h2 className="text-3xl font-bold mb-6 text-gray-900">Submit a Complaint</h2>
+
+      {message && (
+        <div className={`mb-4 px-4 py-2 rounded font-medium ${
+          message.startsWith('✅') ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+        }`}>
+          {message}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-6">
         <div>
+          <label className="block text-sm font-medium mb-1">Title</label>
           <input
             name="title"
-            onChange={handleChange}
             value={form.title}
-            placeholder="Title"
-            className={`input w-full ${errors.title ? 'border-red-500' : ''}`}
+            onChange={handleChange}
+            className={`w-full px-4 py-2 rounded-md border ${errors.title ? 'border-red-500' : 'border-gray-300'} focus:ring focus:ring-blue-500 outline-none`}
           />
-          {errors.title && <p className="text-red-500 text-sm mt-1">{errors.title}</p>}
+          {errors.title && <p className="text-red-500 text-sm">{errors.title}</p>}
         </div>
 
-        {/* Description */}
         <div>
+          <label className="block text-sm font-medium mb-1">Description</label>
           <textarea
             name="description"
-            onChange={handleChange}
             value={form.description}
-            placeholder="Describe the issue..."
-            className={`input w-full h-24 resize-none ${errors.description ? 'border-red-500' : ''}`}
+            onChange={handleChange}
+            className={`w-full px-4 py-2 rounded-md border resize-none h-28 ${errors.description ? 'border-red-500' : 'border-gray-300'} focus:ring focus:ring-blue-500 outline-none`}
           />
-          {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
+          {errors.description && <p className="text-red-500 text-sm">{errors.description}</p>}
         </div>
 
-        {/* Category */}
         <div>
+          <label className="block text-sm font-medium mb-1">Category</label>
           <select
             name="category"
-            onChange={handleChange}
             value={form.category}
-            className={`input w-full ${errors.category ? 'border-red-500' : ''}`}
+            onChange={handleChange}
+            className={`w-full px-4 py-2 rounded-md border ${errors.category ? 'border-red-500' : 'border-gray-300'} focus:ring focus:ring-blue-500 outline-none`}
           >
             <option value="">Select Category</option>
-            {categories.map((cat) => (
+            {categories.map(cat => (
               <option key={cat} value={cat}>{cat}</option>
             ))}
           </select>
-          {errors.category && <p className="text-red-500 text-sm mt-1">{errors.category}</p>}
+          {errors.category && <p className="text-red-500 text-sm">{errors.category}</p>}
         </div>
 
-        {/* Location */}
         <div>
-          <label className="block mb-1 font-medium">Location</label>
+          <label className="block text-sm font-medium mb-1">Location</label>
           <input
             type="text"
-            placeholder="Search for location..."
             ref={autocompleteRef}
-            className={`input w-full ${errors.location ? 'border-red-500' : ''}`}
+            placeholder="Search address..."
+            className={`w-full px-4 py-2 rounded-md border ${errors.location ? 'border-red-500' : 'border-gray-300'} focus:ring focus:ring-blue-500 outline-none`}
           />
-          {errors.location && <p className="text-red-500 text-sm mt-1">{errors.location}</p>}
+          {errors.location && <p className="text-red-500 text-sm">{errors.location}</p>}
         </div>
 
-        {/* Media Upload */}
         <div>
-          <label className="block mb-1 font-medium">Add Media</label>
-          <input type="file" accept="image/*,video/*" onChange={handleFileChange} className="input w-full" />
-          {filePreview && (
-            <img src={filePreview} alt="Preview" className="mt-3 rounded-lg max-h-48 object-contain" />
+          <label className="block text-sm font-medium mb-1">Upload Image (less than 3MB)</label>
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleFilesChange}
+            className="w-full px-4 py-2 rounded-md border border-gray-300"
+          />
+          {errors.media && <p className="text-red-500 text-sm">{errors.media}</p>}
+          {mediaPreviews.length > 0 && (
+            <div className="flex gap-3 mt-3">
+              {mediaPreviews.map((src, idx) => (
+                <img
+                  key={idx}
+                  src={src}
+                  alt={`Preview ${idx + 1}`}
+                  className="w-20 h-20 object-cover rounded border border-gray-400"
+                />
+              ))}
+            </div>
           )}
         </div>
 
-        {/* Submit Button */}
-        <button type="submit" className="bg-white text-black hover:bg-blue-100 rounded-md w-full py-3 text-lg font-semibold">
-          Submit Complaint 
+        <button
+          type="submit"
+          className="w-full py-3 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+        >
+          Submit Complaint
         </button>
       </form>
     </div>

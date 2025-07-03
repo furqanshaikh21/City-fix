@@ -9,4 +9,4 @@ const userSchema = new mongoose.Schema({
   points: { type: Number, default: 0 }
 }, { timestamps: true });
 
-export default mongoose.model('User', userSchema);
+export default mongoose.models.User || mongoose.model('User', userSchema);

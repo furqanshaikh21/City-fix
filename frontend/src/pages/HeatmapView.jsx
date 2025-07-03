@@ -7,13 +7,24 @@ const mapContainerStyle = {
   width: '100%',
   height: '80vh',
 };
+const BANGALORE_BOUNDS = {
+  north: 13.1500,
+  south: 12.7500,
+  west: 77.4000,
+  east: 77.8000,
+};
 
 const libraries = ['visualization']; // for heatmap
 const mapOptions = {
   disableDefaultUI: true,
   zoomControl: true,
-  styles: [], // Optional: add dark/light styles
+  
+  restriction: {
+    latLngBounds: BANGALORE_BOUNDS,
+    strictBounds: true,
+  },
 };
+
 
 const HeatmapView = () => {
   const [heatmapData, setHeatmapData] = useState([]);
@@ -23,53 +34,7 @@ const HeatmapView = () => {
     googleMapsApiKey: 'AIzaSyB8Z-9vlITIqlvT_PBb-xLGcOGse8lLimE',
     libraries,
   });
-// const mapOptions = {
-//   disableDefaultUI: true,
-//   zoomControl: true,
-//   styles: [ // Dark map theme
-//     {
-//       elementType: 'geometry',
-//       stylers: [{ color: '#212121' }],
-//     },
-//     {
-//       elementType: 'labels.icon',
-//       stylers: [{ visibility: 'off' }],
-//     },
-//     {
-//       elementType: 'labels.text.fill',
-//       stylers: [{ color: '#757575' }],
-//     },
-//     {
-//       elementType: 'labels.text.stroke',
-//       stylers: [{ color: '#212121' }],
-//     },
-//     {
-//       featureType: 'administrative',
-//       elementType: 'geometry',
-//       stylers: [{ color: '#757575' }],
-//     },
-//     {
-//       featureType: 'poi',
-//       elementType: 'labels.text.fill',
-//       stylers: [{ color: '#757575' }],
-//     },
-//     {
-//       featureType: 'road',
-//       elementType: 'geometry',
-//       stylers: [{ color: '#38414e' }],
-//     },
-//     {
-//       featureType: 'water',
-//       elementType: 'geometry',
-//       stylers: [{ color: '#000000' }],
-//     },
-//     {
-//       featureType: 'water',
-//       elementType: 'labels.text.fill',
-//       stylers: [{ color: '#3d3d3d' }],
-//     },
-//   ],
-// };
+
 setTimeout(() => {
   if (mapRef.current && bounds.isValid()) {
     mapRef.current.fitBounds(bounds, { top: 50, bottom: 50, left: 50, right: 50 });
@@ -123,13 +88,14 @@ setTimeout(() => {
   return (
     <div className="p-6">
       <h2 className="text-2xl font-semibold mb-4">Complaint Heatmap</h2>
-      <GoogleMap
-        mapContainerStyle={mapContainerStyle}
-        zoom={12}
-        center={{ lat: 12.9694, lng: 77.6415 }} // Initial center; will auto-fit later
-        options={mapOptions}
-        onLoad={(map) => (mapRef.current = map)}
-      >
+  <GoogleMap
+  mapContainerStyle={mapContainerStyle}
+  zoom={12}
+  center={{ lat: 12.9716, lng: 77.5946 }} // ✅ Set Bangalore's center here
+  options={mapOptions}
+  onLoad={(map) => (mapRef.current = map)}
+>
+
         {heatmapData.length > 0 && (
          <HeatmapLayerF
   data={heatmapData}

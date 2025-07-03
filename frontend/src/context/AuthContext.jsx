@@ -1,40 +1,39 @@
+// src/context/AuthContext.jsx
 import { createContext, useContext, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 
-// Create the context
-const AuthContext = createContext();
+export const AuthContext = createContext();
+export const useAuth = () => useContext(AuthContext);
 
-// Auth Provider component
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const storedUser = JSON.parse(localStorage.getItem("user"));
-    if (storedUser) setUser(storedUser);
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+    setLoading(false);
   }, []);
 
   const login = (userData) => {
-    localStorage.setItem("user", JSON.stringify(userData));
     setUser(userData);
-    navigate("/profile");
+    localStorage.setItem("user", JSON.stringify(userData));
+    localStorage.setItem("token", userData.token);
   };
 
   const logout = () => {
-    localStorage.removeItem("user");
     setUser(null);
-    navigate("/login");
+    localStorage.removeItem("user");
+    localStorage.removeItem("token");
   };
 
+  const isAdmin = user?.role === "admin";
+  const isUser = user?.role === "user";
+
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, login, logout, loading, isAdmin, isUser }}>
       {children}
     </AuthContext.Provider>
   );
 };
-
-// Hook to use auth context
-export const useAuth = () => useContext(AuthContext);
-
-// Export AuthContext (in case you want to consume it directly)
-export { AuthContext };

@@ -10,6 +10,10 @@
   @apply w-full bg-white hover:bg-blue-700 text-black font-bold py-2 px-4 rounded;
 }
 
+body {
+  font-family: 'Inter', sans-serif;
+}
+
 .font-poppins {
   font-family: 'Poppins', sans-serif;
 }

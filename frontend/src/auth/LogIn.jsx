@@ -2,62 +2,82 @@ import { useState } from "react";
 import axios from "axios";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { LogInIcon, ShieldCheck, UserPlus } from "lucide-react";
+import { LogInIcon, ShieldCheck, UserPlus, Eye, EyeOff } from "lucide-react";
 
 const LogIn = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [formData, setFormData] = useState({ email: "", password: "" });
   const [error, setError] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
 
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
   const handleLogin = async (e) => {
     e.preventDefault();
+    setError(null);
     try {
-      const res = await axios.post("http://localhost:5000/api/auth/login", { email, password });
-      const userData = res.data.user || res.data;
-      login(userData);
+      const res = await axios.post("http://localhost:5000/api/auth/login", formData);
+      const { token, user } = res.data;
 
-      if (res.data.token) {
-        localStorage.setItem("token", res.data.token);
-      }
+      const userWithToken = { ...user, token };
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(userWithToken));
 
+      login(userWithToken);
       navigate("/profile");
     } catch (err) {
-      setError("⚠️ Login failed. Check your credentials.");
+      console.error("Login error:", err);
+      setError("⚠️ Login failed. Please check your email and password.");
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-r from-blue-100 to-blue-300 dark:from-gray-800 dark:to-gray-900">
-      <div className="bg-white dark:bg-gray-800 shadow-xl rounded-xl p-8 w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-white px-4">
+      <div className="bg-white shadow-xl rounded-xl p-8 w-full max-w-md">
         <div className="text-center mb-6">
-          <h2 className="text-3xl font-extrabold text-gray-800 dark:text-white">Welcome Back</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Please login to continue</p>
+          <h2 className="text-3xl font-bold text-gray-800">Welcome Back</h2>
+          <p className="text-sm text-gray-500">Please login to continue</p>
         </div>
-        <form onSubmit={handleLogin} className="space-y-5">
+
+        <form onSubmit={handleLogin} className="space-y-5" autoComplete="on">
           <div>
-            <label className="block mb-1 text-gray-600 dark:text-gray-300">Email</label>
+            <label className="block mb-1 text-gray-700">Email</label>
             <input
               type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
               placeholder="you@example.com"
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             />
           </div>
+
           <div>
-            <label className="block mb-1 text-gray-600 dark:text-gray-300">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-              required
-            />
+            <label className="block mb-1 text-gray-700">Password</label>
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                placeholder="••••••••"
+                className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute top-2.5 right-3 text-gray-500 hover:text-gray-700"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
+
           {error && <p className="text-red-500 text-sm">{error}</p>}
 
           <button
@@ -69,19 +89,15 @@ const LogIn = () => {
           </button>
         </form>
 
-        <div className="mt-6 flex justify-between items-center text-sm text-gray-600 dark:text-gray-400">
-          <Link
-            to="/register"
-            className="flex items-center gap-1 hover:text-blue-600 dark:hover:text-blue-400 transition"
-          >
+        <div className="mt-6 flex justify-between items-center text-sm text-gray-600">
+          <Link to="/register" className="flex items-center gap-1 hover:text-blue-600 transition">
             <UserPlus size={16} />
             New User? Register
           </Link>
-          <Link to="/admin-login" className="flex items-center gap-1 hover:text-blue-600 dark:hover:text-blue-400 transition">
-  <ShieldCheck size={16} />
-  Admin Login
-</Link>
-
+          <Link to="/admin-login" className="flex items-center gap-1 hover:text-blue-600 transition">
+            <ShieldCheck size={16} />
+            Admin Login
+          </Link>
         </div>
       </div>
     </div>
